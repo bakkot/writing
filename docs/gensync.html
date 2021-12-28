@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Optionally async functions in JavaScript</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.0.1/styles/base16/github.min.css">
+<link rel="stylesheet" href="style.css">
+
+<header>
+  <h1>Optionally async functions in JavaScript</h1>
+  <p>Or: avoiding the <a href="https://journal.stuffwithstuff.com/2015/02/01/what-color-is-your-function/">what-color-is-your-function</a> trap.
+</p>
+</header>
+
+<div class="content">
+  <h3 id="tldr">tl;dr</h3>
+  <p><a href="https://github.com/loganfsmyth/gensync">GenSync</a> is a really neat library that lets you write one function and use it in both sync and async contexts.</p>
+
+  <h3 id="intro">Intro</h3>
+  <p><code class="hljs"><span class="hljs-keyword">async</span></code> functions are great! Everyone loves them! But, well, they tend to get <em>everywhere</em>, and sometimes you need to do things synchronously. And if you want to do basically the same thing in a synchronous context, you get to copy-paste and rewrite your entire function. That sucks.</p>
+  <p>GenSync is the fix.</p>
+
+  <h3 id="a-quick-example">A quick example</h3>
+  <p>Instead of writing both</p>
+  <pre><code class="hljs"><span class="hljs-keyword">function</span> <span class="hljs-title function_">doSomething</span>(<span class="hljs-params"></span>) {
+  <span class="hljs-keyword">let</span> value = <span class="hljs-title function_">init</span>();
+  <span class="hljs-keyword">let</span> thing = <span class="hljs-title function_">syncDoInnerThing</span>();
+  <span class="hljs-title function_">doSomeLogic</span>(thing);
+  <span class="hljs-title function_">doSomeOtherLogic</span>(thing);
+  <span class="hljs-keyword">return</span> thing;
+}</code></pre>
+  <p>and</p>
+  <pre><code class="hljs"><span class="hljs-keyword">async</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">doSomethingButAsync</span>(<span class="hljs-params"></span>) {
+  <span class="hljs-keyword">let</span> value = <span class="hljs-title function_">init</span>();
+  <span class="hljs-keyword">let</span> thing = <span class="hljs-keyword">await</span> <span class="hljs-title function_">asyncDoInnerThing</span>();
+  <span class="hljs-comment">// ^ only line changed from doSomething</span>
+  <span class="hljs-title function_">doSomeLogic</span>(thing);
+  <span class="hljs-title function_">doSomeOtherLogic</span>(thing);
+  <span class="hljs-keyword">return</span> thing;
+}</code></pre>
+  <p>you can write</p>
+  <pre><code class="hljs"><span class="hljs-keyword">let</span> doInnerThing = <span class="hljs-title function_">gensync</span>({
+  <span class="hljs-attr">sync</span>: syncDoInnerThing,
+  <span class="hljs-attr">async</span>: asyncDoInnerThing,
+});
+
+<span class="hljs-keyword">let</span> { <span class="hljs-attr">sync</span>: doSomething, <span class="hljs-attr">async</span>: doSomethingButAsync } = <span class="hljs-title function_">gensync</span>(
+  <span class="hljs-keyword">function</span>* () {
+    <span class="hljs-comment">// note: `function*` instead of `async function`</span>
+    <span class="hljs-keyword">let</span> value = <span class="hljs-title function_">init</span>();
+    <span class="hljs-keyword">let</span> thing = <span class="hljs-keyword">yield</span>* <span class="hljs-title function_">doInnerThing</span>();
+    <span class="hljs-comment">// note: `yield*` instead of `await`</span>
+    <span class="hljs-title function_">doSomeLogic</span>(thing);
+    <span class="hljs-title function_">doSomeOtherLogic</span>(thing);
+    <span class="hljs-keyword">return</span> thing;
+  }
+);</code></pre>
+  <p>and then get both <code>doSomething</code> and <code>doSomethingButAsync</code> with no copy-pasting required!</p>
+
+  <h3 id="a-real-example">A real example</h3>
+  <p>OK, that was maybe a little <em>too</em> quick, and besides, when would you even want to do that?</p>
+  <p>Here's a real example. Let's say you want to write a utility which finds the transitive dependencies of an ES module. Easy enough:</p>
+  <pre><code class="hljs"><span class="hljs-keyword">import</span> * <span class="hljs-keyword">as</span> babel <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;@babel/parser&#x27;</span>;
+
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">async</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">getTransitiveDependencies</span>(<span class="hljs-params">{ entrypointURL, readURL }</span>) {
+  <span class="hljs-keyword">let</span> queue = [entrypointURL.<span class="hljs-title function_">toString</span>()];
+  <span class="hljs-keyword">let</span> seen = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Set</span>();
+  <span class="hljs-keyword">while</span> (queue.<span class="hljs-property">length</span> &gt; <span class="hljs-number">0</span>) {
+    <span class="hljs-keyword">let</span> nextURL = queue.<span class="hljs-title function_">shift</span>();
+    <span class="hljs-keyword">if</span> (seen.<span class="hljs-title function_">has</span>(nextURL)) {
+      <span class="hljs-keyword">continue</span>;
+    }
+    seen.<span class="hljs-title function_">add</span>(nextURL);
+    <span class="hljs-keyword">let</span> source = <span class="hljs-keyword">await</span> <span class="hljs-title function_">readURL</span>(nextURL);
+    queue.<span class="hljs-title function_">push</span>(...<span class="hljs-title function_">dependenciesFromModule</span>(source, nextURL));
+  }
+  <span class="hljs-keyword">return</span> [...seen];
+}
+
+<span class="hljs-keyword">function</span> <span class="hljs-title function_">dependenciesFromModule</span>(<span class="hljs-params">source, sourceURL</span>) {
+  <span class="hljs-keyword">let</span> parsed = babel.<span class="hljs-title function_">parse</span>(source, { <span class="hljs-attr">sourceType</span>: <span class="hljs-string">&#x27;module&#x27;</span> });
+  <span class="hljs-keyword">return</span> parsed.<span class="hljs-property">program</span>.<span class="hljs-property">body</span>
+    .<span class="hljs-title function_">filter</span>(<span class="hljs-function"><span class="hljs-params">line</span> =&gt;</span> [<span class="hljs-string">&#x27;ImportDeclaration&#x27;</span>, <span class="hljs-string">&#x27;ExportNamedDeclaration&#x27;</span>, <span class="hljs-string">&#x27;ExportAllDeclaration&#x27;</span>].<span class="hljs-title function_">includes</span>(line.<span class="hljs-property">type</span>) &amp;&amp; line.<span class="hljs-property">source</span> != <span class="hljs-literal">null</span>)
+    .<span class="hljs-title function_">map</span>(<span class="hljs-function"><span class="hljs-params">line</span> =&gt;</span> <span class="hljs-keyword">new</span> <span class="hljs-title function_">URL</span>(line.<span class="hljs-property">source</span>.<span class="hljs-property">value</span>, sourceURL).<span class="hljs-title function_">toString</span>());
+}</code></pre>
+  <p>And since you let the user specify how read to files, it works both in node:</p>
+  <pre><code class="hljs"><span class="hljs-keyword">import</span> { getTransitiveDependencies } <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;./get-transitive-deps.mjs&#x27;</span>;
+<span class="hljs-keyword">import</span> * <span class="hljs-keyword">as</span> fsPromises <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;node:fs/promises&#x27;</span>;
+<span class="hljs-keyword">import</span> * <span class="hljs-keyword">as</span> url <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;node:url&#x27;</span>;
+
+(<span class="hljs-keyword">async</span> () =&gt; {
+  <span class="hljs-keyword">let</span> deps = <span class="hljs-keyword">await</span> <span class="hljs-title function_">getTransitiveDependencies</span>({
+    <span class="hljs-attr">entrypointURL</span>: url.<span class="hljs-title function_">pathToFileURL</span>(<span class="hljs-string">&#x27;src/main.js&#x27;</span>),
+    <span class="hljs-attr">readURL</span>: <span class="hljs-keyword">async</span> u =&gt; <span class="hljs-keyword">await</span> fsPromises.<span class="hljs-title function_">readFile</span>(url.<span class="hljs-title function_">fileURLToPath</span>(u), <span class="hljs-string">&#x27;utf8&#x27;</span>),
+  });
+  <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(deps);
+})().<span class="hljs-title function_">catch</span>(<span class="hljs-function"><span class="hljs-params">e</span> =&gt;</span> {
+  <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">error</span>(e);
+});</code></pre>
+  <p>and on the web:</p>
+  <pre><code class="hljs"><span class="hljs-keyword">import</span> { getTransitiveDependencies } <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;./get-transitive-deps.mjs&#x27;</span>;
+
+(<span class="hljs-keyword">async</span> () =&gt; {
+  <span class="hljs-keyword">let</span> deps = <span class="hljs-keyword">await</span> <span class="hljs-title function_">getTransitiveDependencies</span>({
+    <span class="hljs-attr">entrypointURL</span>: <span class="hljs-keyword">new</span> <span class="hljs-title function_">URL</span>(<span class="hljs-string">&#x27;src/main.js&#x27;</span>, <span class="hljs-variable language_">window</span>.<span class="hljs-property">location</span>),
+    <span class="hljs-attr">readURL</span>: <span class="hljs-keyword">async</span> u =&gt; <span class="hljs-keyword">await</span> (<span class="hljs-keyword">await</span> <span class="hljs-title function_">fetch</span>(u)).<span class="hljs-title function_">text</span>(),
+  });
+  <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(deps);
+})().<span class="hljs-title function_">catch</span>(<span class="hljs-function"><span class="hljs-params">e</span> =&gt;</span> {
+  <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">error</span>(e);
+});</code></pre>
+  <p>All is well.</p>
+  <p>But then you want to use your fancy new utility in a <a href="https://eslint.org/docs/developer-guide/working-with-rules">custom ESLint rule</a>, and... you can't. ESLint rules must complete synchronously, and your utility uses <code class="hljs"><span class="hljs-keyword">await</span></code>. Even if the caller provides you with a synchronous <code>readURL</code>, like <code>fs.readFileSync</code>, there's no straightforward way for your function to use it <em>and</em> still be able to handle the user giving you <code>fetch</code>, which is necessarily async.</p>
+  <p>There's nothing for it but to copy-paste your whole utility and remove the <code class="hljs"><span class="hljs-keyword">async</span></code> and <code class="hljs"><span class="hljs-keyword">await</span></code> keywords. Ugh.</p>
+
+  <h4 id="enter-gensync">Enter GenSync</h4>
+  <p>GenSync solves this problem for you. All you have to do is replace <code class="hljs"><span class="hljs-keyword">async</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">f</span>(<span class="hljs-params"></span>) {}</code> with <code class="hljs"><span class="hljs-keyword">let</span> { <span class="hljs-attr">sync</span>: syncF, <span class="hljs-attr">async</span>: asyncF } = <span class="hljs-keyword">function</span>* <span class="hljs-title function_">f</span>(<span class="hljs-params"></span>) {}</code>, replace all <code class="hljs"><span class="hljs-keyword">await</span></code>s with <code class="hljs"><span class="hljs-keyword">yield</span>*</code>s, and wrap up any possibly-asynchronous functions you want to call with <code class="hljs"><span class="hljs-title function_">gensync</span>({ <span class="hljs-attr">sync</span>: f, <span class="hljs-attr">async</span>: f })</code>. Like this:</p>
+  <pre><code class="hljs"><span class="hljs-keyword">import</span> { <span class="hljs-keyword">default</span> <span class="hljs-keyword">as</span> gensync } <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;gensync&#x27;</span>;
+
+<span class="hljs-keyword">let</span> <span class="hljs-title function_">wrap</span> = f =&gt; <span class="hljs-title function_">gensync</span>({ <span class="hljs-attr">sync</span>: f, <span class="hljs-attr">async</span>: f });
+
+<span class="hljs-keyword">let</span> { sync, <span class="hljs-keyword">async</span> } = <span class="hljs-title function_">gensync</span>(
+  <span class="hljs-keyword">function</span>* <span class="hljs-title function_">getTransitiveDependencies</span>(<span class="hljs-params">{ entrypointURL, readURL }</span>) {
+    <span class="hljs-keyword">let</span> queue = [entrypointURL.<span class="hljs-title function_">toString</span>()];
+    <span class="hljs-keyword">let</span> seen = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Set</span>();
+    <span class="hljs-keyword">while</span> (queue.<span class="hljs-property">length</span> &gt; <span class="hljs-number">0</span>) {
+      <span class="hljs-keyword">let</span> nextURL = queue.<span class="hljs-title function_">shift</span>();
+      <span class="hljs-keyword">if</span> (seen.<span class="hljs-title function_">has</span>(nextURL)) {
+        <span class="hljs-keyword">continue</span>;
+      }
+      seen.<span class="hljs-title function_">add</span>(nextURL);
+      <span class="hljs-keyword">let</span> source = <span class="hljs-keyword">yield</span>* <span class="hljs-title function_">wrap</span>(readURL)(nextURL);
+      queue.<span class="hljs-title function_">push</span>(...<span class="hljs-title function_">dependenciesFromModule</span>(source, nextURL));
+    }
+    <span class="hljs-keyword">return</span> [...seen];
+  }
+);
+
+<span class="hljs-keyword">export</span> {
+  sync <span class="hljs-keyword">as</span> getTransitiveDependenciesSync,
+  <span class="hljs-keyword">async</span> <span class="hljs-keyword">as</span> getTransitiveDependenciesAsync,
+};</code></pre>
+  <p>Now you have both sync and async versions of your function available, with no copy-pasting required. You can call <code>getTransitiveDependenciesAsync</code> just as before, but you can also call 
+  <code>getTransitiveDependenciesSync</code> and pass it a sync <code>readURL</code> function and get a sync result, like you need for your hypothetical ESLint rule.</p>
+  <pre><code class="hljs"><span class="hljs-comment">// this works when you can be async</span>
+<span class="hljs-keyword">let</span> asyncDeps = <span class="hljs-keyword">await</span> <span class="hljs-title function_">getTransitiveDependenciesAsync</span>({
+  <span class="hljs-attr">entrypointURL</span>: url.<span class="hljs-title function_">pathToFileURL</span>(<span class="hljs-string">&#x27;src/main.js&#x27;</span>),
+  <span class="hljs-attr">readURL</span>: <span class="hljs-keyword">async</span> u =&gt; <span class="hljs-keyword">await</span> fsPromises.<span class="hljs-title function_">readFile</span>(url.<span class="hljs-title function_">fileURLToPath</span>(u), <span class="hljs-string">&#x27;utf8&#x27;</span>),
+});
+<span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(asyncDeps);
+
+<span class="hljs-comment">// this works when you need to be sync</span>
+<span class="hljs-keyword">let</span> syncDeps = <span class="hljs-title function_">getTransitiveDependenciesSync</span>({
+  <span class="hljs-attr">entrypointURL</span>: url.<span class="hljs-title function_">pathToFileURL</span>(<span class="hljs-string">&#x27;src/main.js&#x27;</span>),
+  <span class="hljs-attr">readURL</span>: <span class="hljs-function"><span class="hljs-params">u</span> =&gt;</span> fs.<span class="hljs-title function_">readFileSync</span>(url.<span class="hljs-title function_">fileURLToPath</span>(u), <span class="hljs-string">&#x27;utf8&#x27;</span>),
+});
+<span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(syncDeps);</code></pre>
+  <p>Isn't that sweet?</p>
+
+  <h3 id="some-other-tricks">Some other tricks</h3>
+  <p>Two more useful tidbits:</p>
+  <p>First, if you know what the sync and async versions of a function are, you can write</p>
+  <pre><code class="hljs"><span class="hljs-keyword">let</span> ambi = <span class="hljs-title function_">gensync</span>({ <span class="hljs-attr">sync</span>: theSyncVersion, <span class="hljs-attr">async</span>: theAsyncVersion });</code></pre>
+  <p>Then <code class="hljs"><span class="hljs-keyword">yield</span>* <span class="hljs-title function_">ambi</span>()</code> will call the right version, depending on whether the function was called as sync or as async.</p>
+  <p>Second, if for some reason you need to branch on which context you were called in, you can do that with a simple helper:</p>
+  <pre><code class="hljs"><span class="hljs-keyword">let</span> isAsync = <span class="hljs-title function_">gensync</span>({
+  <span class="hljs-attr">sync</span>: <span class="hljs-function">() =&gt;</span> <span class="hljs-literal">false</span>,
+  <span class="hljs-attr">async</span>: <span class="hljs-function">() =&gt;</span> <span class="hljs-title class_">Promise</span>.<span class="hljs-title function_">resolve</span>(<span class="hljs-literal">true</span>),
+});
+
+<span class="hljs-comment">// later</span>
+<span class="hljs-keyword">if</span> (<span class="hljs-keyword">yield</span>* <span class="hljs-title function_">isAsync</span>()) {
+  <span class="hljs-comment">/* async-specific code */</span>
+} <span class="hljs-keyword">else</span> {
+  <span class="hljs-comment">/* sync-specific code */</span>
+}</code></pre>
+
+  <h3 id="parting-thoughts">Parting thoughts</h3>
+  <p>I hope we in the JS community can make broader use of this library, and break free of the trap of writing functions which can only be used in one context or the other. <a href="https://github.com/babel/babel/blob/dfcfbf3b274343f782edbf5f6de0a6d830d77edb/packages/babel-core/src/gensync-utils/async.ts">Babel is already doing it</a> - if you've ever wondered how they manage to have both <a href="https://babeljs.io/docs/en/babel-core#transformsync"><code>transformSync</code></a> and <a href="https://babeljs.io/docs/en/babel-core#transformasync"><code>transformAsync</code></a>, now you know. If you end up in a similar situation, I encourage you to follow their lead.</p>
+  <h3 id="credits">Credits</h3>
+  <p>Major kudos to my fellow TC39 delegate <a href="https://twitter.com/loganfsmyth">@loganfsmyth</a> for writing this library.</p>
+
+
+</div>

@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build.js"
+  },
+  "dependencies": {
+    "highlight.js": "^11.3.1",
+    "jsdom": "^19.0.0"
+  }
+}
