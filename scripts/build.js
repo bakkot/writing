@@ -22,7 +22,7 @@ function highlightCodeblocks(html) {
     let suffix = html.slice(loc.endOffset);
 
     let formatted = hljs.highlight(code, { language: 'javascript' }).value;
-    html = prefix + '<code class="hljs">' + formatted.trim() + '</code>' + suffix;
+    html = `${prefix}<code class="hljs${code.length < 10 ? ' nowrap' : ''}">${formatted.trim()}</code>${suffix}`;
   }
   return html;
 }

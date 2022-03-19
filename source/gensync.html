@@ -12,14 +12,23 @@
 </header>
 
 <div class="content">
-  <h3 id="tldr">tl;dr</h3>
+  <h3 id="tldr">
+    <span class="anchor-box"><a href="#tldr" class="sec-anchor">§</a></span>
+    tl;dr
+  </h3>
   <p><a href="https://github.com/loganfsmyth/gensync">GenSync</a> is a really neat library that lets you write one function and use it in both sync and async contexts.</p>
 
-  <h3 id="intro">Intro</h3>
+  <h3 id="intro">
+    <span class="anchor-box"><a href="#intro" class="sec-anchor">§</a></span>
+    Intro
+  </h3>
   <p><code class="build-js">async</code> functions are great! Everyone loves them! But, well, they tend to get <em>everywhere</em>, and sometimes you need to do things synchronously. And if you want to do basically the same thing in a synchronous context, you get to copy-paste and rewrite your entire function. That sucks.</p>
   <p>GenSync is the fix.</p>
 
-  <h3 id="a-quick-example">A quick example</h3>
+  <h3 id="a-quick-example">
+    <span class="anchor-box"><a href="#a-quick-example" class="sec-anchor">§</a></span>
+    A quick example
+  </h3>
   <p>Instead of writing both</p>
   <pre><code class="build-js">
 function doSomething() {
@@ -62,7 +71,10 @@ let { sync: doSomething, async: doSomethingButAsync } = gensync(
   </code></pre>
   <p>and then get both <code>doSomething</code> and <code>doSomethingButAsync</code> with no copy-pasting required!</p>
 
-  <h3 id="a-real-example">A real example</h3>
+  <h3 id="a-real-example">
+    <span class="anchor-box"><a href="#a-real-example" class="sec-anchor">§</a></span>
+    A real example
+  </h3>
   <p>OK, that was maybe a little <em>too</em> quick, and besides, when would you even want to do that?</p>
   <p>Here's a real example. Let's say you want to write a utility which finds the transitive dependencies of an ES module. Easy enough:</p>
   <pre><code class="build-js">
@@ -153,7 +165,7 @@ export {
   async as getTransitiveDependenciesAsync,
 };
   </code></pre>
-  <p>Now you have both sync and async versions of your function available, with no copy-pasting required. You can call <code>getTransitiveDependenciesAsync</code> just as before, but you can also call 
+  <p>Now you have both sync and async versions of your function available, with no copy-pasting required. You can call <code>getTransitiveDependenciesAsync</code> just as before, but you can also call
   <code>getTransitiveDependenciesSync</code> and pass it a sync <code>readURL</code> function and get a sync result, like you need for your hypothetical ESLint rule.</p>
   <pre><code class="build-js">
 // this works when you can be async
@@ -172,7 +184,10 @@ console.log(syncDeps);
   </code></pre>
   <p>Isn't that sweet?</p>
 
-  <h3 id="some-other-tricks">Some other tricks</h3>
+  <h3 id="some-other-tricks">
+    <span class="anchor-box"><a href="#some-other-tricks" class="sec-anchor">§</a></span>
+    Some other tricks
+  </h3>
   <p>Two more useful tidbits:</p>
   <p>First, if you know what the sync and async versions of a function are, you can write</p>
   <pre><code class="build-js">
@@ -194,10 +209,17 @@ if (yield* isAsync()) {
 }
   </code></pre>
 
-  <h3 id="parting-thoughts">Parting thoughts</h3>
+  <h3 id="parting-thoughts">
+    <span class="anchor-box"><a href="#parting-thoughts" class="sec-anchor">§</a></span>
+    Parting thoughts
+  </h3>
   <p>I hope we in the JS community can make broader use of this library, and break free of the trap of writing functions which can only be used in one context or the other. <a href="https://github.com/babel/babel/blob/dfcfbf3b274343f782edbf5f6de0a6d830d77edb/packages/babel-core/src/gensync-utils/async.ts">Babel is already doing it</a> - if you've ever wondered how they manage to have both <a href="https://babeljs.io/docs/en/babel-core#transformsync"><code>transformSync</code></a> and <a href="https://babeljs.io/docs/en/babel-core#transformasync"><code>transformAsync</code></a>, now you know. If you end up in a similar situation, I encourage you to follow their lead.</p>
-  <h3 id="credits">Credits</h3>
+
+  <h3 id="credits">
+    <span class="anchor-box"><a href="#credits" class="sec-anchor">§</a></span>
+    Credits
+  </h3>
   <p>Major kudos to my fellow TC39 delegate <a href="https://twitter.com/loganfsmyth">@loganfsmyth</a> for writing this library.</p>
-
-
 </div>
+
+<div class="signature">&#8211; <a href="https://about.bakkot.com/">bakkot</a></div>

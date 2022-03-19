@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>The Principle of Least Frustration</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.0.1/styles/base16/github.min.css">
+<link rel="stylesheet" href="style.css">
+
+<header>
+  <h1>The Principle of Least Frustration</h1>
+  <p>Every design surprises someone. How bad is that going to be?</p>
+</header>
+
+<div class="content">
+
+  <h3 id="intro">
+    <span class="anchor-box"><a href="#intro" class="sec-anchor">§</a></span>
+    Intro
+  </h3>
+  <p>Suppose you're choosing between two possible designs for an API. You figure a slight majority of people are going to assume it works as in Design A - maybe 60%, to 40% who will expect Design B.</p>
+  <p>The <a href="https://en.wikipedia.org/wiki/Principle_of_least_astonishment">Principle of Least Surprise</a> says you should pick Design A. Done.</p>
+  <p>But there's another factor you should consider: how frustrating is the experience going to be for people with the wrong expectation?</p>
+  <p>Usually that means: how helpful is the error going to be when someone uses it wrong?</p>
+  <p>Getting the wrong behavior, or getting an error message which doesn't tell you how to actually fix your problem, is very frustrating. Getting an error message which tells you exactly what you need to do instead is barely an annoyance at all.</p>
+  <p>So if someone who <em>expects</em> Design B but <em>gets</em> Design A is going to silently get the wrong result, whereas someone who <em>expects</em> Design A but <em>gets</em> Design B is going to get an error message which has enough information for them to get it right on the next attempt, that's a very strong reason to prefer Design B. Maybe even a good enough reason to prefer it over  Design A, even if it's going to be surprising to more people.</p>
+
+  <h3 id="case-study">
+    <span class="anchor-box"><a href="#case-study" class="sec-anchor">§</a></span>
+    Case study: <code class="build-js">-x ** y</code>
+  </h3>
+  <p>In ES2015, JavaScript introduced the exponentiation operator <code class="build-js">**</code>. It had a tricky corner: how should <code class="build-js">-x ** y</code> be interpreted? A lot of people would expect it to be <code class="build-js">-(x ** y)</code>. A lot of people would expect it to be <code class="build-js">(-x) ** y</code>. Either way, one of those groups will be surprised, and it's going to be a pretty frustrating experience: they'll get a different value than expected, even though what they wrote will look correct to them.</p>
+  <p>In the end, JavaScript chose a third way: <code class="build-js">-x ** y</code> is a syntax error. You are forced to write parentheses to disambiguate. This is surprises both groups, but is only minimally frustrating for either. Instead of getting an incorrect value which you'll need to debug, your program won't run at all, and the error message will (hopefully) tell you to add parentheses. A quick fix right away and you can go about your life, instead of a potentially lengthy debugging session sometime down the road.</p>
+
+  <h3 id="kinds-of-frustration">
+    <span class="anchor-box"><a href="#kinds-of-frustration" class="sec-anchor">§</a></span>
+    Kinds of frustration
+  </h3>
+  <p>More or less informative error messages aren't the only way that different designs vary in how frustrating they are.</p>
+  </p>An error you only find out about in production is more frustrating than an error you find out about during development. An error which corrupts data is more frustrating than an error which cleanly crashes a program. And an error which triggers nondeterministically is more frustrating than one which is completely reproducible.</p>
+  <p>Watch out for all the different ways the experience of using your system will be painful for a user whose expectations don't match your own.</p>
+
+  <h3 id="dont-overdo-it">
+    <span class="anchor-box"><a href="#dont-overdo-it" class="sec-anchor">§</a></span>
+    Don't overdo it
+  </h3>
+  <p>Remember that causing a small amount of frustration for 99% of users might still lead to more total frustration than causing a large amount of frustration for 1% of users. It might not be worth trying to improve the experience of a smaller group if it makes the experience noticeably worse for a larger one.</p>
+
+  <h3 id="takeaway">
+    <span class="anchor-box"><a href="#takeaway" class="sec-anchor">§</a></span>
+    Takeaway
+  </h3>
+  <p>The Principle of Least Surprise says you should try to minimize how many people are going to be surprised by the behavior of your system.</p>
+  <p>I prefer the Principle of Least Frustration: you should try to minimize how much frustration people are going to experience when trying to use your system, taking into account that some people are inevitably going to use it wrong.</p>
+  <p>That is, when you're designing an API, don't just think about whether your design will match what the majority expects. Think about what the experience is going to be like for the people with different expectations. If going with a somewhat more surprising design lets you make the experience less annoying for people with mismatched expectations - for example, by providing earlier or better error messages - you might be able to make your API less frustrating on net.</p>
+</div>
+
+<div class="signature">&#8211; <a href="https://about.bakkot.com/">bakkot</a></div>
