@@ -44,6 +44,9 @@ code {
 h3:hover > span > .sec-anchor {
   visibility: initial;
 }
+h3 {
+  padding-top: .8em;
+}
 .anchor-box {
   margin-left: -.8em;
   float: left;
